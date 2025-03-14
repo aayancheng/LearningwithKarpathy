@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive LLM Mind Map</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .node circle {
+            fill: lightblue;
+            stroke: steelblue;
+            stroke-width: 2px;
+            cursor: pointer;
+        }
+        .node text {
+            font-size: 14px;
+        }
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
+        }
+    </style>
+</head>
+<body>
+    <svg width="1000" height="700"></svg>
+    <script>
+        const treeData = {
+            "name": "LLM Use Cases", "children": [
+                {"name": "Models", "children": [
+                    {"name": "Types of Models", "children": [
+                        {"name": "Large Models"},
+                        {"name": "Small Models"},
+                        {"name": "Thinking Models"}
+                    ]},
+                    {"name": "Providers", "children": [
+                        {"name": "OpenAI", "children": [
+                            {"name": "GPT-4"},
+                            {"name": "GPT-4o"},
+                            {"name": "DALL-E"}
+                        ]},
+                        {"name": "Anthropic", "children": [
+                            {"name": "Claude 3.5 Sonnet"},
+                            {"name": "Claude 3.7"}
+                        ]},
+                        {"name": "Google", "children": [{"name": "Gemini"}]}
+                    ]}
+                ]},
+                {"name": "Tools", "children": [
+                    {"name": "Internet Search"},
+                    {"name": "Python Interpreter"},
+                    {"name": "Advanced Data Analysis"}
+                ]},
+                {"name": "Modalities", "children": [
+                    {"name": "Text"},
+                    {"name": "Audio", "children": [
+                        {"name": "Speech-to-Text"},
+                        {"name": "Text-to-Speech"}
+                    ]},
+                    {"name": "Images", "children": [
+                        {"name": "Image Input"},
+                        {"name": "Image Generation"}
+                    ]}
+                ]}
+            ]
+        };
+        
+        const width = 1000, height = 700;
+        const svg = d3.select("svg"),
+              g = svg.append("g").attr("transform", "translate(50,50)");
+        
+        const tree = d3.tree().size([height - 100, width - 200]);
+        const root = d3.hierarchy(treeData);
+        root.x0 = height / 2;
+        root.y0 = 0;
+        
+        function update(source) {
+            const treeData = tree(root);
+            const nodes = treeData.descendants(),
+                  links = treeData.links();
+            nodes.forEach(d => d.y = d.depth * 180);
+            
+            const node = g.selectAll(".node")
+                .data(nodes, d => d.id || (d.id = ++i));
+            
+            const nodeEnter = node.enter().append("g")
+                .attr("class", "node")
+                .attr("transform", d => `translate(${source.y0},${source.x0})`)
+                .on("click", click);
+            
+            nodeEnter.append("circle").attr("r", 6);
+            nodeEnter.append("text").attr("dy", 3).attr("x", d => d.children ? -10 : 10).text(d => d.data.name);
+            
+            const nodeUpdate = nodeEnter.merge(node);
+            nodeUpdate.transition().duration(750)
+                .attr("transform", d => `translate(${d.y},${d.x})`);
+            
+            const nodeExit = node.exit().transition().duration(750)
+                .attr("transform", d => `translate(${source.y},${source.x})`).remove();
+            
+            const link = g.selectAll(".link")
+                .data(links, d => d.target.id);
+            
+            const linkEnter = link.enter().insert("path", "g")
+                .attr("class", "link")
+                .attr("d", d => {
+                    const o = {x: source.x0, y: source.y0};
+                    return d3.linkHorizontal().x(d => d.y).y(d => d.x)({source: o, target: o});
+                });
+            
+            const linkUpdate = linkEnter.merge(link);
+            linkUpdate.transition().duration(750).attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
+            
+            link.exit().transition().duration(750)
+                .attr("d", d => {
+                    const o = {x: source.x, y: source.y};
+                    return d3.linkHorizontal().x(d => d.y).y(d => d.x)({source: o, target: o});
+                }).remove();
+            
+            nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+        }
+        
+        function click(event, d) {
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            } else {
+                d.children = d._children;
+                d._children = null;
+            }
+            update(d);
+        }
+        
+        let i = 0;
+        update(root);
+    </script>
+</body>
+</html>
+
